@@ -17,7 +17,7 @@ def download_model_files():
     """
     model_dir = "models"
     files_to_download = {
-        "yolov3-tiny.weights": "https://data.pjreddie.com/files/yolov3-tiny.weights",
+        "yolov3-tiny.weights": "https://pjreddie.com/media/files/yolov3-tiny.weights",
         "yolov3-tiny.cfg": "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3-tiny.cfg",
         "coco.names": "https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names",
     }
