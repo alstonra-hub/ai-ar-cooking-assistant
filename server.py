@@ -5,6 +5,70 @@ from threading import Thread, Event
 from FoodDetector import detect_food
 from progress_tracker import FoodItemTracker
 
+class RecipeStateManager:
+    """Manages the state of the current recipe, including steps and timers."""
+    def __init__(self):
+        # Mock recipe data - this will be replaced by API calls in a later step
+        self._recipe = {
+            "name": "Simple Pasta",
+            "steps": [
+                {"description": "Boil water", "duration": 300}, # 5 minutes
+                {"description": "Add pasta and cook", "duration": 480}, # 8 minutes
+                {"description": "Drain pasta and serve", "duration": 60} # 1 minute
+            ]
+        }
+        self.current_step_index = 0
+        self.timer_remaining = self._recipe["steps"][0]["duration"]
+        self.timer_is_running = False # Start in a paused state
+
+    def get_current_status(self):
+        """Returns the current state of the recipe."""
+        current_step = self._recipe["steps"][self.current_step_index]
+        return {
+            "recipe_name": self._recipe["name"],
+            "current_step": current_step["description"],
+            "current_step_index": self.current_step_index,
+            "total_steps": len(self._recipe["steps"]),
+            "timer_remaining": self.timer_remaining,
+            "timer_is_running": self.timer_is_running
+        }
+
+    def pause_timer(self):
+        """Pauses the timer and notifies clients."""
+        self.timer_is_running = False
+        print("INFO: Timer paused.")
+        push_progress_update(self.get_current_status())
+
+    def resume_timer(self):
+        """Resumes the timer and notifies clients."""
+        self.timer_is_running = True
+        print("INFO: Timer resumed.")
+        push_progress_update(self.get_current_status())
+
+    def next_step(self):
+        """Advances to the next step and notifies clients."""
+        if self.current_step_index < len(self._recipe["steps"]) - 1:
+            self.current_step_index += 1
+            new_step = self._recipe["steps"][self.current_step_index]
+            self.timer_remaining = new_step["duration"]
+            self.timer_is_running = False  # Always start new steps paused
+            print(f"INFO: Advanced to step {self.current_step_index + 1}: {new_step['description']}")
+            push_progress_update(self.get_current_status())
+            return True
+        else:
+            print("INFO: Already on the final step.")
+            return False
+
+    def _decrement_timer(self):
+        """Decrements the timer by one second if it is running."""
+        if self.timer_is_running and self.timer_remaining > 0:
+            self.timer_remaining -= 1
+            # Push updates every second while timer is running
+            push_progress_update(self.get_current_status())
+
+# Create a single instance of the state manager to be used by the app
+recipe_manager = RecipeStateManager()
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!' # In a real app, this should be a real secret
 socketio = SocketIO(app)
@@ -13,18 +77,32 @@ socketio = SocketIO(app)
 def index():
     return "API Server for AR Cooking Assistant is running."
 
-# This will be replaced with real logic from progress_tracker.py later
-mock_progress = {
-    "current_state": "Chopping onions",
-    "progress_percentage": 0
-}
-
 @app.route('/progress')
 def progress():
-    """Returns the current cooking progress."""
-    # Simulate progress for now
-    mock_progress["progress_percentage"] = (mock_progress["progress_percentage"] + 10) % 100
-    return jsonify(mock_progress)
+    """Returns the current cooking progress status."""
+    return jsonify(recipe_manager.get_current_status())
+
+# --- Command Endpoints ---
+
+@app.route('/command/next_step', methods=['POST'])
+def command_next_step():
+    recipe_manager.next_step()
+    return jsonify({"status": "ok", "message": "Advanced to next step."})
+
+@app.route('/command/repeat_step', methods=['POST'])
+def command_repeat_step():
+    push_progress_update(recipe_manager.get_current_status())
+    return jsonify({"status": "ok", "message": "Current step data re-sent."})
+
+@app.route('/command/pause_timer', methods=['POST'])
+def command_pause_timer():
+    recipe_manager.pause_timer()
+    return jsonify({"status": "ok", "message": "Timer paused."})
+
+@app.route('/command/resume_timer', methods=['POST'])
+def command_resume_timer():
+    recipe_manager.resume_timer()
+    return jsonify({"status": "ok", "message": "Timer resumed."})
 
 @socketio.on('connect')
 def handle_connect():
@@ -48,6 +126,12 @@ def push_progress_update(progress_data):
 # Global state for tracking food items and thread control
 food_trackers = {}
 thread_stop_event = Event()
+
+def timer_thread_loop():
+    """A background thread that manages the recipe timer."""
+    while not thread_stop_event.is_set():
+        recipe_manager._decrement_timer()
+        socketio.sleep(1)
 
 def video_processing_loop():
     """
@@ -104,7 +188,8 @@ def video_processing_loop():
         socketio.sleep(2) # Process a frame every 2 seconds
 
 if __name__ == '__main__':
-    print("Starting background task for video processing...")
+    print("Starting background tasks...")
+    socketio.start_background_task(target=timer_thread_loop)
     socketio.start_background_task(target=video_processing_loop)
     print("Starting Flask-SocketIO server on http://0.0.0.0:5000")
     socketio.run(app, host='0.0.0.0', port=5000)
