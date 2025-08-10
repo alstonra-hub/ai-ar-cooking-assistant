@@ -43,9 +43,9 @@ def preprocess_image(image, alpha=1.2, beta=10):
     adjusted_image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
     return adjusted_image
 
-def detect_food(image: np.ndarray, confidence_threshold: float = 0.3, nms_threshold: float = 0.4):
+def detect_ingredients(image: np.ndarray, confidence_threshold: float = 0.3, nms_threshold: float = 0.4):
     """
-    Detects food items in an image using the YOLOv3-tiny model.
+    Detects ingredients in an image using the YOLOv3-tiny model.
 
     Args:
         image: The input image as a NumPy array.
@@ -53,8 +53,8 @@ def detect_food(image: np.ndarray, confidence_threshold: float = 0.3, nms_thresh
         nms_threshold: The threshold for non-maxima suppression.
 
     Returns:
-        A list of dictionaries, where each dictionary represents a detected
-        food item and contains its label, confidence score, and bounding box.
+        A list of tuples, where each tuple contains the detected
+        ingredient name and its bounding box (x, y, w, h).
     """
     download_model_files()
 
@@ -112,12 +112,7 @@ def detect_food(image: np.ndarray, confidence_threshold: float = 0.3, nms_thresh
             label = str(classes[class_ids[i]])
             if label in food_items:
                 x, y, w, h = boxes[i]
-                confidence = confidences[i]
-                results.append({
-                    "label": label,
-                    "confidence": confidence,
-                    "box": [x, y, w, h]
-                })
+                results.append((label, (x, y, w, h)))
 
     return results
 
@@ -146,15 +141,15 @@ if __name__ == '__main__':
             if image is None:
                 print(f"\nError: Could not read the image file. Please check the path.")
             else:
-                # Call the main detection function
-                detected_food = detect_food(image)
+                # Call the newly renamed main detection function
+                detected_ingredients = detect_ingredients(image)
 
                 print(f"\n--- Detection Results ---")
-                if detected_food:
-                    for item in detected_food:
-                        print(f"  - Found '{item['label']}' with {item['confidence']:.2f} confidence.")
+                if detected_ingredients:
+                    for item_name, box in detected_ingredients:
+                        print(f"  - Found '{item_name}' at bounding box: {box}")
                 else:
-                    print("  No food items were detected.")
+                    print("  No ingredients were detected.")
 
         except cv2.error as e:
             print(f"\nERROR: A known OpenCV compatibility issue occurred.")
