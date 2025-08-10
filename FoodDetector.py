@@ -10,8 +10,8 @@ def download_model_files():
     model_dir = "models"
     files_to_download = {
         "yolov3-tiny.weights": "https://pjreddie.com/media/files/yolov3-tiny.weights",
-        "yolov3-tiny.cfg": "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3-tiny.cfg",
-        "coco.names": "https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names",
+        "yolov3-tiny.cfg": "https://github.com/pjreddie/darknet/blob/master/cfg/yolov3-tiny.cfg?raw=true",
+        "coco.names": "https://github.com/pjreddie/darknet/blob/master/data/coco.names?raw=true",
     }
 
     if not os.path.exists(model_dir):
@@ -34,6 +34,15 @@ def download_model_files():
                     os.remove(filepath)
                 raise
 
+def preprocess_image(image):
+    """
+    Applies brightness and contrast normalization to an image.
+    This stretches the pixel value range to cover the full 0-255 scale.
+    """
+    # Use MINMAX normalization to enhance contrast
+    normalized_image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    return normalized_image
+
 def detect_food(image: np.ndarray, confidence_threshold: float = 0.5, nms_threshold: float = 0.4):
     """
     Detects food items in an image using the YOLOv3-tiny model.
@@ -48,6 +57,9 @@ def detect_food(image: np.ndarray, confidence_threshold: float = 0.5, nms_thresh
         food item and contains its label, confidence score, and bounding box.
     """
     download_model_files()
+
+    # Apply preprocessing to the input image
+    image = preprocess_image(image)
 
     weights_path = os.path.join("models", "yolov3-tiny.weights")
     config_path = os.path.join("models", "yolov3-tiny.cfg")
