@@ -99,3 +99,17 @@ class FoodItemTracker:
                 self.state = "cooked"
                 self.state_changed_this_frame = True
                 print(f"INFO: Food item {self.id} has changed state to 'cooked'.")
+
+
+def mark_step_completed(item_name, on_complete_callback):
+    """
+    Marks a recipe step as completed and triggers a callback.
+    This function acts as a hook for the main application loop.
+
+    Args:
+        item_name (str): The name of the item related to the completed step.
+        on_complete_callback (function): The function to call upon completion.
+    """
+    print(f"INFO: Step involving '{item_name}' marked as completed. Firing callback.")
+    if on_complete_callback:
+        on_complete_callback()

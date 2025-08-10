@@ -34,16 +34,16 @@ def download_model_files():
                     os.remove(filepath)
                 raise
 
-def preprocess_image(image):
+def preprocess_image(image, alpha=1.2, beta=10):
     """
-    Applies brightness and contrast normalization to an image.
-    This stretches the pixel value range to cover the full 0-255 scale.
+    Applies brightness and contrast adjustment.
+    alpha: contrast control (1.0-3.0)
+    beta: brightness control (0-100)
     """
-    # Use MINMAX normalization to enhance contrast
-    normalized_image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
-    return normalized_image
+    adjusted_image = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    return adjusted_image
 
-def detect_food(image: np.ndarray, confidence_threshold: float = 0.5, nms_threshold: float = 0.4):
+def detect_food(image: np.ndarray, confidence_threshold: float = 0.3, nms_threshold: float = 0.4):
     """
     Detects food items in an image using the YOLOv3-tiny model.
 
@@ -120,3 +120,45 @@ def detect_food(image: np.ndarray, confidence_threshold: float = 0.5, nms_thresh
                 })
 
     return results
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Detect food items in an image using YOLOv3-tiny.'
+    )
+    parser.add_argument(
+        '--test-image',
+        type=str,
+        required=True,
+        help='Path to an image file for detection testing.'
+    )
+
+    args = parser.parse_args()
+
+    if args.test_image:
+        print(f"--- Running FoodDetector in Test Mode ---")
+        print(f"Loading image from: {args.test_image}")
+
+        try:
+            image = cv2.imread(args.test_image)
+            if image is None:
+                print(f"\nError: Could not read the image file. Please check the path.")
+            else:
+                # Call the main detection function
+                detected_food = detect_food(image)
+
+                print(f"\n--- Detection Results ---")
+                if detected_food:
+                    for item in detected_food:
+                        print(f"  - Found '{item['label']}' with {item['confidence']:.2f} confidence.")
+                else:
+                    print("  No food items were detected.")
+
+        except cv2.error as e:
+            print(f"\nERROR: A known OpenCV compatibility issue occurred.")
+            print(f"       The YOLOv3 model weights are likely incompatible with this version of OpenCV.")
+            print(f"       OpenCV Error Details: {e}")
+        except Exception as e:
+            print(f"\nAn unexpected error occurred: {e}")

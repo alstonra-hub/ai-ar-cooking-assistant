@@ -123,8 +123,16 @@ def push_progress_update(progress_data):
     """
     socketio.emit('progress_update', progress_data, broadcast=True)
 
-# Global state for tracking food items and thread control
-food_trackers = {}
+def send_food_detected_event(item_data):
+    """Sends a food detection event to all connected clients."""
+    event_data = {
+        "event": "food_detected",
+        "item": item_data["label"],
+        "confidence": item_data["confidence"]
+    }
+    socketio.emit('detection_event', event_data, broadcast=True)
+
+# Global state for thread control
 thread_stop_event = Event()
 
 def timer_thread_loop():
@@ -135,57 +143,32 @@ def timer_thread_loop():
 
 def video_processing_loop():
     """
-    Main loop to process video, detect food, and track progress.
-    This runs in a background thread.
+    Main loop to process video, detect food, and send WebSocket events.
     """
     print("Video processing loop started.")
-    # In a real application, this would capture from a live camera
-    # For this simulation, we load a static image to test the pipeline
     frame = cv2.imread("test_images/dog.jpg")
     if frame is None:
         print("Error: Could not load test image. Stopping processing loop.")
         return
 
-    tracker_id_counter = 0
-
     while not thread_stop_event.is_set():
-        # The core of the application logic is here.
-        # This will fail on the detect_food call due to the known OpenCV issue.
-        # The code is written to be logically correct, assuming a compatible environment.
         try:
             detected_items = detect_food(frame)
 
             if detected_items:
-                # Simplified tracking: focus on the first detected item
-                item = detected_items[0]
-                item_box = item['box']
-
-                if not food_trackers:
-                    print("INFO: New food item detected, starting tracker.")
-                    food_trackers[tracker_id_counter] = FoodItemTracker(tracker_id_counter, item_box, frame)
-                    tracker_id_counter += 1
-
-                tracker = food_trackers[0]
-                tracker.update(item_box, frame)
-
-                if tracker.state_changed_this_frame:
-                    print(f"INFO: State change for item {tracker.id} detected. Sending WebSocket update.")
-                    update_data = {
-                        "itemId": tracker.id,
-                        "newState": tracker.state,
-                        "message": f"Item {tracker.id} is now {tracker.state}."
-                    }
-                    push_progress_update(update_data)
+                print(f"INFO: Detected {len(detected_items)} food item(s). Sending events.")
+                for item in detected_items:
+                    send_food_detected_event(item)
 
         except cv2.error as e:
             print(f"ERROR: Known OpenCV error in detection, cannot proceed. {e}")
             print("Stopping video processing loop.")
-            break # Exit the loop on this fatal error
+            break
         except Exception as e:
             print(f"An unexpected error occurred in the processing loop: {e}")
             break
 
-        socketio.sleep(2) # Process a frame every 2 seconds
+        socketio.sleep(2) # Detection runs every 2 seconds
 
 if __name__ == '__main__':
     print("Starting background tasks...")
