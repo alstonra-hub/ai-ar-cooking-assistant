@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 import cv2
 from threading import Thread, Event
-from FoodDetector import detect_food
+from FoodDetector import detect_ingredients
 from progress_tracker import FoodItemTracker
 
 class RecipeStateManager:
@@ -153,7 +153,7 @@ def video_processing_loop():
 
     while not thread_stop_event.is_set():
         try:
-            detected_items = detect_food(frame)
+            detected_items = detect_ingredients(frame)
 
             if detected_items:
                 print(f"INFO: Detected {len(detected_items)} food item(s). Sending events.")
@@ -175,4 +175,4 @@ if __name__ == '__main__':
     socketio.start_background_task(target=timer_thread_loop)
     socketio.start_background_task(target=video_processing_loop)
     print("Starting Flask-SocketIO server on http://0.0.0.0:5000")
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

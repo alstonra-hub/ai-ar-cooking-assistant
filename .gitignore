@@ -1,3 +1,9 @@
 *.pyc
 __pycache__/
 .env
+
+# Log files
+server.log
+
+# Model files - these are downloaded by the script
+models/

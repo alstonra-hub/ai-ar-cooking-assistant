@@ -1,5 +1,5 @@
 import cv2
-from FoodDetector import detect_food
+from FoodDetector import detect_ingredients
 
 def main():
     """
@@ -15,7 +15,7 @@ def main():
 
     print(f"Running food detection on '{image_path}'...")
 
-    detected_items = detect_food(image)
+    detected_items = detect_ingredients(image)
 
     if detected_items:
         print("\nDetected food items:")

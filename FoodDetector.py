@@ -9,9 +9,9 @@ def download_model_files():
     """
     model_dir = "models"
     files_to_download = {
-        "yolov3-tiny.weights": "https://pjreddie.com/media/files/yolov3-tiny.weights",
-        "yolov3-tiny.cfg": "https://github.com/pjreddie/darknet/blob/master/cfg/yolov3-tiny.cfg?raw=true",
-        "coco.names": "https://github.com/pjreddie/darknet/blob/master/data/coco.names?raw=true",
+        "yolov4-tiny.weights": "https://github.com/AlexeyAB/darknet/releases/download/darknet_yolo_v4_pre/yolov4-tiny.weights",
+        "yolov4-tiny.cfg": "https://raw.githubusercontent.com/AlexeyAB/darknet/master/cfg/yolov4-tiny.cfg",
+        "coco.names": "https://raw.githubusercontent.com/AlexeyAB/darknet/master/data/coco.names",
     }
 
     if not os.path.exists(model_dir):
@@ -61,8 +61,8 @@ def detect_ingredients(image: np.ndarray, confidence_threshold: float = 0.3, nms
     # Apply preprocessing to the input image
     image = preprocess_image(image)
 
-    weights_path = os.path.join("models", "yolov3-tiny.weights")
-    config_path = os.path.join("models", "yolov3-tiny.cfg")
+    weights_path = os.path.join("models", "yolov4-tiny.weights")
+    config_path = os.path.join("models", "yolov4-tiny.cfg")
     names_path = os.path.join("models", "coco.names")
 
     with open(names_path, "r") as f:
@@ -75,6 +75,8 @@ def detect_ingredients(image: np.ndarray, confidence_threshold: float = 0.3, nms
     }
 
     net = cv2.dnn.readNet(weights_path, config_path)
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
     layer_names = net.getLayerNames()
     output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers().flatten()]
 
